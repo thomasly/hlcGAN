@@ -1,0 +1,15 @@
+import os
+
+utils = os.path.abspath(__file__)
+home = os.path.dirname(utils)
+base = os.path.join(home, 'base')
+configs = os.path.join(home, 'configs')
+data = os.path.join(home, 'data')
+data_loader = os.path.join(home, 'data_loader')
+figures = os.path.join(home, 'figures')
+layers = os.path.join(home, 'layers')
+main = os.path.join(home, 'main')
+models = os.path.join(home, 'models')
+trainers = os.path.join(home, 'trainers')
+output = os.path.join(home, 'output')
+checkpoints = os.path.join(output, 'checkpoints')
