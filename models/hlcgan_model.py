@@ -11,25 +11,13 @@ class HLCGAN(BaseModel):
 
     batch_size = 1
     pool_size = 50
-    nfg = 32
+    ngf = 32
     ndf = 64
 
     def __init__(self, config):
         super(HLCGAN, self).__init__(config)
         self.build_generator()
         self.init_saver()
-        self._ngf = 32
-        self._ndf = 64
-        self._bath_size = 1
-        self._pool_size = 50
-        self._img_width = 256
-        self._img_height = 256
-        self._img_depth = 3
-
-
-    @property
-    def ngf(self):
-        return self._ngf
 
     
     def build_generator(self):
