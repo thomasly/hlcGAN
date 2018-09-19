@@ -1,30 +1,51 @@
 import tensorflow as tf
-from .resnet_block import resnet_block
-from .convolutional import general_conv2d
-from models.hlcgan_model import HLCGAN
+from utils.helpers import get_weights, norm, leaky_relu, get_biases
 
-def discriminator(input, name='discriminator'):
-    with tf.variable_scope(name):
-        f = 4 
+## Discriminator layers
+def Ck(input, k, slope, stride=2, reuse=False, norm='instance', is_training=True, name=None):
+    """ A 4x4 Convolution-BatchNorm-LeakyReLU layer with k filters and stride 2
+    Args:
+        input: 4D tensor
+        k: integer, number of filters (output depth)
+        slope: LeakyReLU's slope
+        stride: integer
+        norm: 'instance' or 'batch' or None
+        is_training: boolean or BoolTensor
+        reuse: boolean
+        name: string, e.g. 'C64'
+    Returns:
+        4D tensor
+    """
+    with tf.variable_scope(name, reuse=reuse):
+        weights = get_weights('weights',
+            shape=[4, 4, input.get_shape()[3], k])
+        
+        conv = tf.nn.conv2d(input, weights,
+            strides=[1, stride, stride, 1], padding='same')
+        normalized = norm(conv, is_training, norm)
+        output = leaky_relu(normalized, slope)
+        return output
 
-        o_c1 = general_conv2d(input, HLCGAN.ngf, f, f, 2, 2, 0.02, 'same', 'c1', do_norm=False, relufactor=0.2)
-        o_c2 = general_conv2d(o_c1, HLCGAN.ngf*2, f, f, 2, 2, 0.02, 'same', 'c2', relufactor=0.2)
-        o_c3 = general_conv2d(o_c2, HLCGAN.ngf*4, f, f, 2, 2, 0.02, 'same', 'c3', relufactor=0.2)
-        o_c4 = general_conv2d(o_c3, HLCGAN.ngf*8, f, f, 2, 2, 0.02, 'same', 'c4', relufactor=0.2)
-        o_c5 = general_conv2d(o_c4, 1, f, f, 2, 2, 0.02, 'same', 'c5', do_norm=False, do_relu=False)
 
-        return o_c5
+def last_conv(input, reuse=False, use_sigmoid=False, name=None):
+    """ Last convolutional layer of discriminator network
+        (1 filter with size 4x4, stride 1)
+    Args:
+        input: 4D tensor
+        reuse: boolean
+        use_sigmoid: boolean (False if use lsgan)
+        name: string, e.g. 'C64'
+    """
+    with tf.variable_scope(name, reuse=reuse):
+        weights = get_weights('weights', 
+            shape=[4, 4, input.get_shape()[3], 1])
+        biases = get_biases('biases', [1])
 
-
-def patch_discriminator(input, name='discriminator'):
-    with tf.variable_scope(name):
-        f = 4
-
-        patch_input = tf.random_crop(input, [1, 70, 70, 3])
-        o_c1 = general_conv2d(patch_input, HLCGAN.ngf, f, f, 2, 2, 0.02, 'same', 'c1', do_norm=False, relufactor=0.2)
-        o_c2 = general_conv2d(o_c1, HLCGAN.ngf*2, f, f, 2, 2, 0.02, 'same', 'c2', relufactor=0.2)
-        o_c3 = general_conv2d(o_c2, HLCGAN.ngf*4, f, f, 2, 2, 0.02, 'same', 'c3', relufactor=0.2)
-        o_c4 = general_conv2d(o_c3, HLCGAN.ngf*8, f, f, 2, 2, 0.02, 'same', 'c4', relufactor=0.2)
-        o_c5 = general_conv2d(o_c4, 1, f, f, 2, 2, 0.02, 'same', 'c5', do_norm=False, do_relu=False)
-
-        return o_c5
+        conv = tf.nn.conv2d(input, weights,
+            strides=[1, 1, 1, 1], padding='same')
+        output = conv + biases
+        if use_sigmoid:
+            output = tf.sigmoid(output)
+        return output
+        
+        
