@@ -18,7 +18,7 @@ def get_weights(name, shape, mean=0.0, stddev=0.02):
     return var
 
 
-def biases(name, shape, constant=0.0):
+def get_biases(name, shape, constant=0.0):
     """ Helper to create an initialized Bias with constant
     """
     return tf.get_variable(name, shape,
@@ -63,7 +63,7 @@ def instance_norm(input):
     with tf.variable_scope('instance_norm'):
         depth = input.get_shape()[3]
         scale = get_weights('scale', [depth], mean=1.0)
-        offset = biases('offset', [depth])
+        offset = get_biases('offset', [depth])
         mean, variance = tf.nn.moments(input, axes=[1, 2], keep_dims=True)
         epsilon = 1e-5
         inv = tf.rsqrt(variance + epsilon)
