@@ -1,59 +1,143 @@
 import tensorflow as tf
-from .convolutional import general_conv2d, general_deconv2d
-from .resnet_block import resnet_block
-from models.hlcgan_model import HLCGAN
+from utils.helpers import get_weights, norm
 
-def generator_resnet_6blocks(inpus, name='generator'):
-    with tf.variable_scope(name):
-        f = 7
-        ks = 3
+## Layers: follow the naming convention used in the original paper
+### Generator layers
+def c7s1_k(input, k, reuse=False, norm='instance', activation='relu', is_training=True, name='c7s1_k'):
+    """ A 7x7 Convolution-BatchNorm-ReLU layer with k filters and stride 1
+    Args:
+        input: 4D tensor
+        k: integer, number of filters (output depth)
+        norm: 'instance' or 'batch' or None
+        activation: 'relu' or 'tanh'
+        name: string, e.g. 'c7sk-32'
+        is_training: boolean or BoolTensor
+        name: string
+        reuse: boolean
+    Returns:
+        4D tensor
+    """
+    with tf.variable_scope(name, reuse=reuse):
+        weights = get_weights("weights",
+            shape=[7, 7, input.get_shape()[3], k])
+        
+        padded = tf.pad(input, [[0, 0], [3, 3], [3, 3], [0,0]], 'REFLECT')
+        conv = tf.nn.conv2d(padded, weights, 
+            strides=[1, 1, 1, 1], padding='valid')
 
-        pad_input = tf.pad(input, [[0, 0], [ks, ks], [ks, ks], [0, 0]], 'REFLECT')
-        o_c1 = general_conv2d(pad_input, HLCGAN.ngf, f, f, 1, 1, 0.02, name='c1')
-        o_c2 = general_conv2d(o_c1, HLCGAN.ngf*2, ks, ks, 2, 2, 0.02, 'same', 'c2')
-        o_c3 = general_conv2d(o_c2, HLCGAN.ngf*4, ks, ks, 2, 2, 0.02, 'same', 'c3')
-
-        o_r1 = resnet_block(o_c3, HLCGAN.ngf*4, 'r1')
-        o_r2 = resnet_block(o_r1, HLCGAN.ngf*4, 'r2')
-        o_r3 = resnet_block(o_r2, HLCGAN.ngf*4, 'r3')
-        o_r4 = resnet_block(o_r3, HLCGAN.ngf*4, 'r4')
-        o_r5 = resnet_block(o_r4, HLCGAN.ngf*4, 'r5')
-        o_r6 = resnet_block(o_r5, HLCGAN.ngf*4, 'r6')
-
-        o_c4 = general_deconv2d(o_r6, HLCGAN.ngf*2, ks, ks, 2, 2, 0.02, 'same', 'c4')
-        o_c5 = general_deconv2d(o_c4, HLCGAN.ngf, ks, ks, 2, 2, 0.02, 'same', 'c5')
-        o_c5_pad = tf.pad(o_c5, [[0, 0], [ks, ks], [ks, ks], [0, 0]], 'REFLECT')
-        o_c6 = general_conv2d(o_c5_pad, HLCGAN.img_layer, f, f, 1, 1, 0.02, 'valid', 'c6', do_relu=False)
-
-        output = tf.nn.tanh(o_c6, name='tanh1')
-
+        normalized = norm(conv, is_training, norm)
+        if activation == 'relu':
+            output = tf.nn.relu(normalized)
+        elif activation == 'tanh':
+            output = tf.nn.tanh(normalized)
+        else:
+            raise ValueError
         return output
 
 
-def generator_resnet_9blocks(input, name='generator'):
-    with tf.variable_scope(name):
-        f = 7
-        ks = 3
-
-        pad_input = tf.pad(input, [[0, 0], [ks, ks], [ks, ks], [0, 0]], 'REFLECT')
-        o_c1 = general_conv2d(pad_input, HLCGAN.ngf, f, f, 1, 1, 0.02, name='c1')
-        o_c2 = general_conv2d(o_c1, HLCGAN.ngf*2, ks, ks, 2, 2, 0.02, 'same', 'c2')
-        o_c3 = general_conv2d(o_c2, HLCGAN.ngf*4, ks, ks, 2, 2, 0.02, 'same', 'c3')
-
-        o_r1 = resnet_block(o_c3, HLCGAN.ngf*4, 'r1')
-        o_r2 = resnet_block(o_r1, HLCGAN.ngf*4, 'r2')
-        o_r3 = resnet_block(o_r2, HLCGAN.ngf*4, 'r3')
-        o_r4 = resnet_block(o_r3, HLCGAN.ngf*4, 'r4')
-        o_r5 = resnet_block(o_r4, HLCGAN.ngf*4, 'r5')
-        o_r6 = resnet_block(o_r5, HLCGAN.ngf*4, 'r6')
-        o_r7 = resnet_block(o_r6, HLCGAN.ngf*4, 'r7')
-        o_r8 = resnet_block(o_r7, HLCGAN.ngf*4, 'r8')
-        o_r9 = resnet_block(o_r8, HLCGAN.ngf*4, 'r9')
-
-        o_c4 = general_deconv2d(o_r9, HLCGAN.ngf*2, ks, ks, 2, 2, 0.02, 'same', 'c4')
-        o_c5 = general_deconv2d(o_c4, HLCGAN.ngf, ks, ks, 2, 2, 0.02, 'same', 'c5')
-        o_c6 = general_conv2d(o_c5, HLCGAN.img_layer, f, f, 1, 1, 0.02, 'same', 'c6', do_relu=False)
-
-        output = tf.nn.tanh(o_c6, name='tanh1')
-
+def dk(input, k, reuse=False, norm='instance', is_training=True, name=None):
+    """ A 3x3 Convolution-BatchNorm-ReLU layer with k filters and stride 2
+    Args:
+        input: 4D tensor
+        k: integer, number of filters (output depth)
+        norm: 'instance' or 'batch' or None
+        is_training: boolean or BoolTensor
+        name: string
+        reuse: boolean
+        name: string, e.g. 'd64'
+    Returns:
+        4D tensor
+    """
+    with tf.variable_scope(name, reuse=reuse):
+        weights = get_weights('weights',
+            shape=[3, 3, input.get_shape()[3], k])
+        
+        conv = tf.nn.conv2d(input, weights, 
+            strides=[1, 2, 2, 1], padding='same')
+        normalized = norm(conv, is_training, norm)
+        output = tf.nn.relu(normalized)
         return output
+
+
+def Rk(input, k, reuse=False, norm='instance', is_training=True, name=None):
+    """ A residual block that contains two 3x3 convolutional layers
+        with the same number of filters on both layer
+        Args:
+            input: 4D Tensor
+            k: integer, number of filters (output depth)
+            reuse: boolean
+            name: string
+        Returns:
+            4D tensor (same shape as input)
+    """
+    with tf.variable_scope(name, reuse=reuse):
+        with tf.variable_scope('layer1', reuse=reuse):
+            weights1 = get_weights('weights1',
+                shape=[3, 3, input.get_shape()[3], k])
+            padded1 = tf.pad(input, [[0,0], [1, 1], [1, 1], [0, 0]], 'REFLECT')
+            conv1 = tf.nn.conv2d(padded1, weights1,
+                strides=[1, 1, 1, 1], padding='valid')
+            normalized1 = norm(conv1, is_training, norm)
+            relu1 = tf.nn.relu(normalized1)
+
+        with tf.variable_scope('layer2', reuse=reuse):
+            weights2 = get_weights('weights2',
+                shape=[3, 3, relu1.get_shape()[3], k])
+            padded2 = tf.pad(relu1, [[0, 0], [1, 1], [1, 1], [0, 0]], 'REFLECT')
+            conv2 = tf.nn.conv2d(padded2, weights2,
+                strides=[1, 1, 1, 1], padding='valid')
+            normalized2 = norm(conv2, is_training, norm)
+        
+        output = tf.add(normalized2, input)
+        return output
+        
+        
+def n_res_block(input, reuse=False, norm='instance', is_training=True, n=6):
+    """ resNet blocks
+    Args:
+        input: 4D tensor
+        reuse: boolean
+        norm: string, 'instance', 'batch' or None
+        is_training: boolean
+        n: integer, number of the reNet blocks
+    Returns:
+        4D tensor (same shape as input)
+    """
+    depth = input.get_shape()[3]
+    for i in range(1, n+1):
+        output = Rk(input, depth, reuse, norm, is_training, 'R{}_{}'.format(depth, i))
+        input = output
+    return output
+
+
+def uk(input, k, reuse=False, norm='instance', is_training=True, name=None, output_size=None):
+    """ A 3x3 fractional-strided-Convolution-BatchNorm-ReLU layer
+        with k filters, stride 1/2
+    Args:
+        input: 4D tensor
+        k: integer, number of filters (output depth)
+        norm: 'instance' or 'batch' or None
+        is_training: boolean or BoolTensor
+        reuse: boolean
+        name: string, e.g. 'c7sk-32'
+        output_size: integer, desired output size of layer
+    Returns:
+        4D tensor
+    """
+    with tf.variable_scope(name, reuse=reuse):
+        input_shape = input.get_shape().as_list()
+
+        weights = get_weights('weights',
+            shape=[3, 3, k, input_shape[3]])
+        
+        if not output_size:
+            output_size = input_shape[1] * 2
+        output_shape = [input_shape[0], output_size, output_size, k]
+        fsconv = tf.nn.conv2d_transpose(input, weights,
+            output_shape=output_shape,
+            strides=[1, 2, 2, 1], padding='same')
+        normalized = norm(fsconv, is_training, norm)
+        output = tf.nn.relu(normalized)
+        return output
+
+
