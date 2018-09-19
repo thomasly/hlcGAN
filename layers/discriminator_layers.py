@@ -2,7 +2,7 @@ import tensorflow as tf
 from utils.helpers import get_weights, norm, leaky_relu, get_biases
 
 ## Discriminator layers
-def Ck(input, k, slope, stride=2, reuse=False, norm='instance', is_training=True, name=None):
+def Ck(input, k, slope=0.2, stride=2, reuse=False, norm='instance', is_training=True, name=None):
     """ A 4x4 Convolution-BatchNorm-LeakyReLU layer with k filters and stride 2
     Args:
         input: 4D tensor
