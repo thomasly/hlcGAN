@@ -1,7 +1,6 @@
-import tensorflow as tf 
+import tensorflow as tf
 import random
 import os
-from utils import paths
 
 try:
     from os import scandir
@@ -11,13 +10,17 @@ except ImportError:
 
 FLAGS = tf.flags.FLAGS
 
-tf.flags.DEFINE_string('X_input_dir', 'data/apple2orange/trainA',
+tf.flags.DEFINE_string(
+    'X_input_dir', 'data/apple2orange/trainA',
     'X input directory, default: data/apple2orange/trainA')
-tf.flags.DEFINE_string('Y_input_dir', 'data/apple2orange/trainB',
+tf.flags.DEFINE_string(
+    'Y_input_dir', 'data/apple2orange/trainB',
     'Y input directory, default: data/apple2orange/trainB')
-tf.flags.DEFINE_string('X_output_file', 'data/tfrecords/apple.tfrecords',
+tf.flags.DEFINE_string(
+    'X_output_file', 'data/tfrecords/apple.tfrecords',
     'X output tfrecords file, default: data/tfrecords/apple.tfrecords')
-tf.flags.DEFINE_string('Y_output_file', 'data/tfrecords/orange.tfrecords',
+tf.flags.DEFINE_string(
+    'Y_output_file', 'data/tfrecords/orange.tfrecords',
     'Y output tfrecords file, default: data/tfrecords/orange.tfrecords')
 
 
@@ -69,10 +72,15 @@ def _converto_example(file_path, image_buffer):
         Example proto
     """
     file_name = os.path.basename(file_path)
-    example = tf.train.Example(features=tf.train.Features(feature={
-        'image/file_name' : _bytes_feature(tf.compat.as_bytes(os.path.basename(file_name))),
-        'image/encoded_image' : _bytes_feature((image_buffer))
-    }))
+    example = tf.train.Example(
+        features=tf.train.Features(
+            feature={
+                'image/file_name': _bytes_feature(
+                    tf.compat.as_bytes(os.path.basename(file_name))),
+                'image/encoded_image': _bytes_feature((image_buffer))
+            }
+        )
+    )
     return example
 
 
@@ -87,7 +95,7 @@ def data_writer(input_dir, output_file):
         os.makedirs(output_dir)
     except OSError:
         pass
-    
+
     images_num = len(file_paths)
 
     # dump to tfrecords file
@@ -118,6 +126,3 @@ def main(unused_argv):
 
 if __name__ == '__main__':
     tf.app.run()
-
-
-
