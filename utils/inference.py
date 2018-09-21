@@ -33,6 +33,7 @@ def inference():
         with tf.gfile.GFile(FLAGS.model, 'rb') as mf:
             graph_def = tf.GraphDef()
             graph_def.ParseFromString(mf.read())
+
         [output_image] = tf.import_graph_def(
             graph_def, input_map={'input_image': input_image},
             return_elements=['output_image:0'],
