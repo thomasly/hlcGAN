@@ -1,6 +1,7 @@
 import tensorflow as tf
 import random
 
+
 def get_weights(name, shape, mean=0.0, stddev=0.02):
     """ Helper to create an initialized Variable
     Args:
@@ -21,7 +22,8 @@ def get_weights(name, shape, mean=0.0, stddev=0.02):
 def get_biases(name, shape, constant=0.0):
     """ Helper to create an initialized Bias with constant
     """
-    return tf.get_variable(name, shape,
+    return tf.get_variable(
+        name, shape,
         initializer=tf.constant_initializer(constant))
 
 
@@ -78,7 +80,8 @@ def safe_log(x, eps=1e-12):
 def convert2int(image):
     """ Transfrom from float tensor ([-1.,1.]) to int image ([0,255])
     """
-    return tf.image.convert_image_dtype((image+1.0)/2.0, 
+    return tf.image.convert_image_dtype(
+        (image+1.0)/2.0,
         tf.uint8, saturate=True)
 
 
@@ -111,13 +114,13 @@ def batch_convert2float(images):
 
 class ImagePool:
     """ History of generated images
-        Same logic as https://github.com/junyanz/CycleGAN/blob/master/util/image_pool.lua
+        Same logic as
+        https://github.com/junyanz/CycleGAN/blob/master/util/image_pool.lua
     """
     def __init__(self, pool_size):
         self.pool_size = pool_size
         self.images = []
 
-    
     def query(self, image):
         if self.pool_size == 0:
             return image
